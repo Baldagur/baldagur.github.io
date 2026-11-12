@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carlos · Tools</title>
+<meta name="description" content="Free browser tools for VFX, camera and color work, built by Carlos.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#eef0f3;--panel:#fff;--ink:#1b2129;--muted:#5d6876;--line:#d5dae1;--accent:#c27a07;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#13171c;--panel:#1b2027;--ink:#e4e8ee;--muted:#9aa5b3;--line:#2c333d;--accent:#f0a533;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#13171c;--panel:#1b2027;--ink:#e4e8ee;--muted:#9aa5b3;--line:#2c333d;--accent:#f0a533;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Barlow",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1040px;margin:0 auto;padding:56px 16px 48px}
+header{border-bottom:3px solid var(--ink);padding-bottom:20px;margin-bottom:32px}
+.eyebrow{font:600 14px "Barlow Condensed",sans-serif;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
+h1{font:700 clamp(40px,7vw,64px)/1 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.01em;margin:0}
+.intro{color:var(--muted);max-width:60ch;margin:12px 0 0;font-size:17px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.card{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;text-decoration:none;color:inherit;transition:border-color .15s,transform .15s}
+.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.thumb{aspect-ratio:16/10;background:var(--line);border-bottom:1px solid var(--line)}
+.thumb img{width:100%;height:100%;object-fit:cover;object-position:top left;display:block}
+.body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:6px;flex:1}
+h2{font:700 26px/1.1 "Barlow Condensed",sans-serif;margin:0}
+.body p{margin:0;color:var(--muted);font-size:15px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:10px}
+.tags span{font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:2px 9px;color:var(--muted)}
+footer{margin-top:48px;color:var(--muted);font-size:13px}
+@media (prefers-reduced-motion:reduce){.card{transition:none}.card:hover{transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Carlos</p>
+    <h1>Tools</h1>
+    <p class="intro">Small browser tools I build for VFX, camera and color work. They're free to use and run entirely in your browser, so nothing you load leaves your computer.</p>
+  </header>
+
+  <main class="grid">
+    <!-- To add a tool: copy one <a class="card"> block and change the link, image and text. -->
+    <a class="card" href="tools/film-back-finder/">
+      <div class="thumb"><img src="img/film-back-finder.png" alt="Film Back Finder showing an ALEXA 35 sensor diagram" loading="lazy"></div>
+      <div class="body">
+        <h2>Film Back Finder</h2>
+        <p>Sensor area and film back for every recording mode of every major cinema camera. Search by camera or by resolution, and copy values for Nuke, Maya or 3DEqualizer.</p>
+        <div class="tags"><span>Matchmove</span><span>Camera tracking</span><span>CG lineup</span></div>
+      </div>
+    </a>
+    <a class="card" href="tools/colorspace-viewer/">
+      <div class="thumb"><img src="img/colorspace-viewer.png" alt="Colorspace viewer showing a color chart decoded from LogC4" loading="lazy"></div>
+      <div class="body">
+        <h2>Colorspace Viewer</h2>
+        <p>See how an image looks in sRGB, Rec.709, P3, ACES and camera log spaces. Compare side by side, load your own EXRs and LUTs, and explore common colorspace mistakes.</p>
+        <div class="tags"><span>Color</span><span>ACES</span><span>Camera log</span></div>
+      </div>
+    </a>
+  </main>
+
+  <footer>Made by Carlos with help from Claude.</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,757 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Film Back Finder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: slate-style header, camera rail on the left, sensor diagram + mode table on the right; second tab is a resolution search */
+:root{
+  --bg:#eef0f3; --panel:#ffffff; --ink:#1b2129; --muted:#5d6876; --line:#d5dae1;
+  --accent:#d4890f; --accent-ink:#7a4c00; --accent-soft:#fbefd9; --frame:#2f6fb5; --frame-soft:rgba(47,111,181,.10);
+  --warn:#a3501a; --warn-soft:#fbe6d8; --band:#1b2129; --band-ink:#eef0f3; --band-muted:#a9b3c0; --band-frame:#8cbcf2;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#13171c; --panel:#1b2027; --ink:#e4e8ee; --muted:#9aa5b3; --line:#2c333d;
+  --accent:#f0a533; --accent-ink:#f6c477; --accent-soft:#3a2c14; --frame:#6aa7ea; --frame-soft:rgba(106,167,234,.12);
+  --warn:#f0a07a; --warn-soft:#3a2419; --band:#0b0e12; --band-ink:#e4e8ee; --band-muted:#9aa5b3; --band-frame:#8cbcf2; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#13171c; --panel:#1b2027; --ink:#e4e8ee; --muted:#9aa5b3; --line:#2c333d;
+  --accent:#f0a533; --accent-ink:#f6c477; --accent-soft:#3a2c14; --frame:#6aa7ea; --frame-soft:rgba(106,167,234,.12);
+  --warn:#f0a07a; --warn-soft:#3a2419; --band:#0b0e12; --band-ink:#e4e8ee; --band-muted:#9aa5b3; --band-frame:#8cbcf2; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+.wrap{max-width:1280px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.slate{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;padding-bottom:14px;border-bottom:3px solid var(--ink)}
+.brandmark{display:flex;align-items:center;gap:12px}
+.clap{width:40px;height:30px;border-radius:3px;background:repeating-linear-gradient(-45deg,var(--ink) 0 7px,var(--panel) 7px 14px);border:2px solid var(--ink)}
+h1{font-family:var(--f-display);font-weight:700;font-size:34px;letter-spacing:.02em;margin:0;line-height:1;text-transform:uppercase}
+.sub{color:var(--muted);font-size:14px;margin:2px 0 0}
+.tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px}
+.tab{font-family:var(--f-display);font-size:17px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border:0;background:transparent;color:var(--muted);padding:7px 14px;border-radius:5px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.tab:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.grid{display:grid;grid-template-columns:290px minmax(0,1fr);gap:20px;margin-top:20px}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.rail{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;align-self:start;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px)}
+@media (max-width:860px){.rail{position:static;max-height:none}}
+input[type=search],input[type=text],input[type=number],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-family:var(--f-body);font-size:12.5px;font-weight:600;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:3px 10px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+.camlist{overflow:auto;display:flex;flex-direction:column;gap:2px;min-height:0;margin:0 -4px;padding:0 4px}
+@media (max-width:860px){.camlist{max-height:260px}}
+.grouphead{font-family:var(--f-display);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:8px 8px 2px}
+.camitem{display:flex;justify-content:space-between;gap:8px;text-align:left;font:inherit;font-size:14px;border:0;background:transparent;color:var(--ink);padding:6px 8px;border-radius:5px;cursor:pointer}
+.camitem:hover{background:var(--bg)}
+.camitem[aria-current="true"]{background:var(--ink);color:var(--bg)}
+.camitem small{font-family:var(--f-mono);font-size:11px;opacity:.7;white-space:nowrap}
+
+.main{display:flex;flex-direction:column;gap:20px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;min-width:0}
+.camhead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start;background:var(--band);color:var(--band-ink);margin:-18px -18px 0;padding:16px 18px;border-radius:10px 10px 0 0}
+.camhead .eyebrow{color:var(--accent)}
+.camhead .facts{color:var(--band-muted)}
+.camhead .facts b{color:var(--band-ink)}
+.camhead .note{color:var(--band-muted)}
+.camhead .pill.ok{background:rgba(140,188,242,.16);color:var(--band-frame)}
+.eyebrow{font-family:var(--f-display);font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
+h2{font-family:var(--f-display);font-size:32px;font-weight:700;margin:0;line-height:1.05;text-wrap:balance}
+.facts{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:13.5px;margin-top:6px}
+.facts b{color:var(--ink);font-weight:600;font-family:var(--f-mono);font-size:12.5px}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;border-radius:4px;padding:1px 7px;background:var(--warn-soft);color:var(--warn);vertical-align:middle}
+.pill.ok{background:var(--frame-soft);color:var(--frame)}
+
+.split{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;margin-top:16px}
+@media (max-width:1100px){.split{grid-template-columns:minmax(0,1fr)}}
+.diagram{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px}
+.diagram svg{width:100%;height:auto;display:block}
+.legend{font-size:12.5px;color:var(--muted);margin-top:8px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.readout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ro{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.ro .k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.ro .v{font-family:var(--f-mono);font-size:18px;font-variant-numeric:tabular-nums;margin-top:2px}
+.ro .v small{font-size:12px;color:var(--muted)}
+.ro.big{grid-column:1/-1;background:var(--accent-soft);border-color:var(--accent)}
+.ro.big .v{font-size:24px;color:var(--accent-ink)}
+.copyrow{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.copyhead{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.copyunit{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 6px 6px 12px}
+.cu-label{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+.cu-label b{font-family:var(--f-mono);font-size:13px}
+.cu-label span{font-size:12px;color:var(--muted)}
+.copyunit .btn{min-width:96px;justify-content:space-between}
+.copyunit .btn code{color:var(--ink)}
+.btn{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:6px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.btn:hover{border-color:var(--accent)}
+.btn code{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+
+.tablewrap{overflow-x:auto;margin-top:4px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font-family:var(--f-display);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:2px solid var(--line);white-space:nowrap;font-weight:600}
+td{padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+td.num{font-family:var(--f-mono);font-size:12.5px}
+td.lbl{white-space:normal;min-width:150px}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--bg)}
+tbody tr.sel{background:var(--accent-soft)}
+tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+.note{color:var(--muted);font-size:12px}
+
+.searchbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.count{font-family:var(--f-display);font-size:22px;font-weight:600;margin:0 0 8px}
+.count span{color:var(--accent-ink)}
+.empty{color:var(--muted);padding:24px 0;text-align:center}
+.disclaimer{color:var(--muted);font-size:12.5px;max-width:80ch;margin-top:24px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="slate">
+    <div class="brandmark">
+      <div class="clap" aria-hidden="true"></div>
+      <div>
+        <h1>Film Back Finder</h1>
+        <p class="sub">Sensor area and film back for every recording mode, for matchmove, camera tracking and CG lineup.</p>
+      </div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-cam" aria-selected="true">By camera</button>
+      <button class="tab" role="tab" id="tab-res" aria-selected="false">By resolution</button>
+    </div>
+  </header>
+
+  <section id="view-cam">
+    <div class="grid">
+      <aside class="rail">
+        <input type="search" id="camq" placeholder="Filter cameras (e.g. Venice, Mini LF)" aria-label="Filter cameras">
+        <div class="chips" id="brandchips"></div>
+        <div class="camlist" id="camlist"></div>
+      </aside>
+      <div class="main">
+        <div class="card">
+          <div class="camhead">
+            <div>
+              <div class="eyebrow" id="cBrand"></div>
+              <h2 id="cName"></h2>
+              <div class="facts" id="cFacts"></div>
+            </div>
+            <div id="cFlag"></div>
+          </div>
+          <div class="split">
+            <div class="diagram">
+              <svg id="sensor" viewBox="0 0 600 400" role="img" aria-label="Sensor area diagram"></svg>
+              <div class="legend"><span>Outer frame: largest recorded area</span><span>Click a row to highlight its area</span></div>
+            </div>
+            <div>
+              <div class="readout" id="readout"></div>
+              <div class="copyrow" id="copyrow"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="tablewrap">
+            <table>
+              <thead><tr><th>Mode</th><th>Resolution</th><th>Aspect</th><th>Film back (mm)</th><th>Film back (in)</th><th title="Millimetres of film back per pixel. For scaled modes this is the effective value of the delivered image.">Pixel density (mm/px)</th><th title="Crop factor compared with a 36 × 24 mm full-frame (FF) sensor">Crop vs full frame</th></tr></thead>
+              <tbody id="modes"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-res" hidden>
+    <div class="card" style="margin-top:20px">
+      <div class="searchbar">
+        <label class="f" style="grid-column:span 2">Resolution
+          <input type="text" id="rq" value="3840" placeholder="3840, 3840x2160, x2160 or 4608" autocomplete="off">
+        </label>
+        <label class="f">Tolerance
+          <select id="rtol">
+            <option value="0">Exact</option>
+            <option value="0.01">Within 1%</option>
+            <option value="0.05">Within 5%</option>
+            <option value="0.1">Within 10%</option>
+          </select>
+        </label>
+        <label class="f">Brand
+          <select id="rbrand"><option value="">All brands</option></select>
+        </label>
+      </div>
+      <p class="note" id="rhint" style="margin:10px 0 0"></p>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div class="card" style="margin-top:20px">
+      <p class="count" id="rcount"></p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Camera</th><th>Mode</th><th>Resolution</th><th>Film back (mm)</th><th>Film back (in)</th><th title="Millimetres of film back per pixel">Pixel density (mm/px)</th><th title="Crop factor compared with a 36 × 24 mm full-frame (FF) sensor">Crop vs full frame</th></tr></thead>
+          <tbody id="results"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <p class="disclaimer">Film back is the physical sensor area each mode records (width × height). Modes marked <b>scaled</b> read a larger area and downsample, so the film back is the read area, not the pixel count times pitch. Values come from manufacturer specs and common VFX references; cameras flagged <span class="pill">check</span> have approximate figures. Confirm against the camera report or metadata on a real job, since firmware updates add and change modes.</p>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+// [label, width, height, film back W mm, film back H mm, note]
+const CAMS = [
+// ---------- ARRI ----------
+{b:"ARRI",m:"ALEXA 35 / 35 Xtreme",f:"Super 35 4.6K",pd:0.00607421875,modes:[
+ ["4.6K 3:2 Open Gate", 4608, 3164, 27.99, 19.22],
+ ["4.6K 16:9", 4608, 2592, 27.99, 15.75],
+ ["4K 16:9", 4096, 2304, 24.88, 14.0],
+ ["4K 2:1", 4096, 2048, 24.88, 12.44],
+ ["3.8K 16:9 (UHD native)", 3840, 2160, 23.33, 13.12],
+ ["UHD from 4K 16:9", 3840, 2160, 24.88, 14.0, "scaled"],
+ ["3.3K 6:5 (anamorphic)", 3328, 2790, 20.22, 16.95],
+ ["4K 2.39:1 Ana 2x from 3.3K 6:5", 4096, 1716, 20.22, 16.95, "scaled"],
+ ["3K 1:1", 3072, 3072, 18.66, 18.66],
+ ["2.7K 8:9 (anamorphic)", 2743, 3086, 16.66, 18.75],
+ ["UHD Ana 2x from 2.7K 8:9", 3840, 2160, 16.66, 18.75, "scaled"],
+ ["2K from 4K 16:9", 2048, 1152, 24.88, 14.0, "scaled"],
+ ["2K 16:9 S16", 2048, 1152, 12.44, 7.0],
+ ["HD from 4K 16:9", 1920, 1080, 24.88, 14.0, "scaled"]]},
+{b:"ARRI",m:"ALEXA Mini LF",f:"Large Format 4.5K",pd:0.00825,modes:[
+ ["LF Open Gate 4.5K",4448,3096,36.70,25.54,"","40 ARRIRAW · 40 ProRes"],
+ ["LF 16:9 UHD",3840,2160,31.68,17.82,"","60 ARRIRAW · 60 ProRes"],
+ ["LF 2.39:1 4.5K",4448,1856,36.70,15.31,"","60 ARRIRAW · 60 ProRes"],
+ ["2.8K 4:3",2880,2160,23.76,17.82],
+ ["LF 16:9 2K",2048,1152,31.68,17.82,"scaled","90 ProRes"],
+ ["LF 16:9 HD",1920,1080,31.68,17.82,"scaled","90 ProRes"],
+ ["HD 1:1 crop",1920,1080,15.84,8.91,"calc"]]},
+{b:"ARRI",m:"ALEXA LF",f:"Large Format 4.5K",pd:0.00825,modes:[
+ ["LF Open Gate 4.5K",4448,3096,36.70,25.54,"","90 ARRIRAW · 60 ProRes"],
+ ["LF 16:9 UHD",3840,2160,31.68,17.82,"","90 ARRIRAW · 60 ProRes"],
+ ["LF 2.39:1 4.5K",4448,1856,36.70,15.31,"","150 ARRIRAW · 100 ProRes"],
+ ["2.8K 4:3",2880,2160,23.76,17.82],
+ ["LF 16:9 2K",2048,1152,31.68,17.82,"scaled","60 ProRes"],
+ ["LF 16:9 HD",1920,1080,31.68,17.82,"scaled","60 ProRes"],
+ ["HD 1:1 crop",1920,1080,15.84,8.91,"calc"]]},
+{b:"ARRI",m:"ALEXA 65",f:"65 mm 6.5K",pd:0.00825,modes:[
+ ["6.5K Open Gate", 6560, 3100, 54.12, 25.58],
+ ["5K 16:9", 5120, 2880, 42.24, 23.76],
+ ["LF Open Gate", 4448, 3096, 36.7, 25.54],
+ ["4K 3:2", 4320, 2880, 35.64, 23.76]]},
+{b:"ARRI",m:"ALEXA 265",f:"65 mm 6.5K",pd:0.00825,modes:[
+ ["6.5K 2.12:1",6560,3100,54.12,25.58],
+ ["5.1K 1.65:1",5120,3100,42.24,25.58],
+ ["4.5K 3:2",4448,3096,36.70,25.54]]},
+{b:"ARRI",m:"ALEXA Mini",f:"Super 35 3.4K",modes:[
+ ["3.4K Open Gate", 3424, 2202, 28.25, 18.17],
+ ["3.2K 16:9", 3200, 1800, 26.4, 14.85],
+ ["4K UHD from 3.2K", 3840, 2160, 26.4, 14.85, "upscaled"],
+ ["2.8K 4:3", 2880, 2160, 23.76, 17.82],
+ ["2.8K 16:9 (ARRIRAW)", 2880, 1620, 23.76, 13.37],
+ ["2.6K 6:5 (anamorphic)", 2578, 2160, 21.27, 17.82],
+ ["2.39:1 Ana 2x", 2560, 2145, 21.12, 17.7, "scaled"],
+ ["2K Ana 2.39:1", 2048, 858, 21.12, 17.7, "scaled"],
+ ["2K 16:9", 2048, 1152, 23.66, 13.3, "scaled"],
+ ["HD 16:9", 1920, 1080, 23.76, 13.37, "scaled"],
+ ["HD Ana 2x", 1920, 1080, 15.84, 17.82, "scaled"],
+ ["S16 HD", 1920, 1080, 13.2, 7.43, "upscaled"]]},
+{b:"ARRI",m:"ALEXA SXT / XT",f:"Super 35 3.4K",modes:[
+ ["3.4K Open Gate", 3424, 2202, 28.25, 18.17],
+ ["4K Cine Open Gate", 4096, 2636, 28.17, 18.13, "upscaled"],
+ ["3.2K 16:9", 3200, 1800, 26.4, 14.85],
+ ["4K UHD from 3.2K", 3840, 2160, 26.4, 14.85, "upscaled"],
+ ["2.8K 4:3", 2880, 2160, 23.76, 17.82],
+ ["2.8K 16:9", 2880, 1620, 23.76, 13.37],
+ ["2.6K 6:5 (anamorphic)", 2578, 2160, 21.27, 17.82],
+ ["4K Cine Ana 6:5", 4096, 1716, 21.12, 17.7, "upscaled"],
+ ["2K 16:9", 2048, 1152, 23.76, 13.37, "scaled"],
+ ["HD 16:9", 1920, 1080, 23.76, 13.37, "scaled"]]},
+{b:"ARRI",m:"AMIRA",f:"Super 35",modes:[
+ ["3.2K 16:9", 3200, 1800, 26.4, 14.85],
+ ["UHD from 3.2K", 3840, 2160, 26.4, 14.85, "upscaled"],
+ ["2.8K 16:9", 2880, 1620, 23.76, 13.37],
+ ["2K 16:9", 2048, 1152, 23.66, 13.3, "scaled"],
+ ["HD 16:9", 1920, 1080, 23.76, 13.37, "scaled"],
+ ["S16 HD", 1920, 1080, 13.2, 7.43, "upscaled"]]},
+// ---------- SONY ----------
+{b:"Sony",m:"VENICE 2 (8.6K)",f:"Full Frame 8.6K",modes:[
+ ["8.6K 3:2", 8640, 5760, 35.9, 24.0],
+ ["8.6K 17:9", 8640, 4556, 35.9, 19.0],
+ ["8.2K 17:9", 8192, 4320, 34.1, 18.0],
+ ["8.1K 16:9", 8100, 4556, 33.7, 19.0],
+ ["8.2K 2.39:1", 8192, 3432, 34.1, 14.3],
+ ["5.8K 6:5 S35 (anamorphic)", 5792, 4854, 24.1, 20.2],
+ ["5.8K 4:3 S35", 5792, 4276, 24.1, 17.8],
+ ["5.8K 17:9 S35", 5792, 3056, 24.1, 12.7]]},
+{b:"Sony",m:"VENICE / VENICE 2 (6K)",f:"Full Frame 6K",modes:[
+ ["6K 3:2", 6048, 4032, 35.9, 24.0],
+ ["6K 1.85:1", 6054, 3272, 36.0, 19.4],
+ ["6K 17:9", 6054, 3192, 36.0, 19.0],
+ ["6K 2.39:1", 6048, 2534, 35.9, 15.0],
+ ["5.7K 16:9", 5674, 3192, 33.7, 19.0],
+ ["4K 6:5 (anamorphic)", 4096, 3432, 24.3, 20.4],
+ ["4K 4:3", 4096, 3024, 24.3, 18.0],
+ ["4K 17:9 S35", 4096, 2160, 24.3, 12.8],
+ ["3.8K 16:9 S35", 3840, 2160, 22.8, 12.8]]},
+{b:"Sony",m:"BURANO",f:"Full Frame 8.6K",modes:[
+ ["FF 8.6K 16:9", 8632, 4856, 35.9, 20.2],
+ ["FF 8.6K 17:9", 8632, 4552, 35.9, 18.9],
+ ["FFc 6K 16:9", 6052, 3404, 33.6, 18.9, "scaled"],
+ ["FFc 6K 17:9", 6052, 3192, 33.6, 17.7, "scaled"],
+ ["FF 5.8K 6:5", 5828, 4856, 24.2, 20.2],
+ ["FFc 3.8K 16:9", 3840, 2160, 32.0, 18.0, "scaled"],
+ ["S35 5.8K 16:9", 5760, 3240, 24.0, 13.5],
+ ["S35 5.8K 17:9", 5760, 3036, 24.0, 12.6],
+ ["S35 4.3K 4:3", 4256, 3192, 23.6, 17.7, "scaled"],
+ ["S35c 4K 17:9", 4096, 2160, 17.0, 9.0],
+ ["S35c 3.8K 16:9", 3840, 2160, 16.0, 9.0],
+ ["S35 1.9K 16:9", 1920, 1080, 24.0, 13.5, "scaled"]]},
+{b:"Sony",m:"FX9",f:"Full Frame 6K",approx:true,modes:[
+ ["FF 6K → DCI 4K",4096,2160,35.70,18.80,"scaled"],
+ ["FF 6K → UHD",3840,2160,33.40,18.80,"scaled"],
+ ["S35 5K → UHD",3840,2160,23.50,13.20,"scaled"]]},
+{b:"Sony",m:"FX6",f:"Full Frame",approx:true,modes:[
+ ["DCI 4K",4096,2160,35.70,18.80,"scaled"],
+ ["UHD",3840,2160,35.70,20.10,"scaled"],
+ ["HD",1920,1080,35.70,20.10,"scaled"]]},
+{b:"Sony",m:"FX3 / A7S III",f:"Full Frame",approx:true,modes:[
+ ["UHD",3840,2160,35.60,20.00,"scaled"],
+ ["HD",1920,1080,35.60,20.00,"scaled"]]},
+{b:"Sony",m:"FX30",f:"APS-C",approx:true,modes:[
+ ["UHD",3840,2160,23.30,13.10,"scaled"],
+ ["HD",1920,1080,23.30,13.10,"scaled"]]},
+{b:"Sony",m:"F55 / F5",f:"Super 35 4K",modes:[
+ ["4K DCI", 4096, 2160, 24.0, 12.7],
+ ["UHD", 3840, 2160, 22.5, 12.7],
+ ["2K", 2048, 1080, 24.0, 12.7, "scaled"],
+ ["HD", 1920, 1080, 22.5, 12.7, "scaled"]]},
+// ---------- RED ----------
+{b:"RED",m:"V-RAPTOR 8K VV / [X] VV",f:"Vista Vision 8K",modes:[
+ ["8K 17:9",8192,4320,40.96,21.60],
+ ["8K 2:1",8192,4096,40.96,20.48],
+ ["8K 2.4:1",8192,3456,40.96,17.28],
+ ["8K 16:9",7680,4320,38.40,21.60],
+ ["7K 17:9",7168,3780,35.84,18.90],
+ ["6K 17:9",6144,3240,30.72,16.20],
+ ["5K 17:9",5120,2700,25.60,13.50],
+ ["4K 17:9",4096,2160,20.48,10.80],
+ ["UHD 16:9",3840,2160,19.20,10.80]]},
+{b:"RED",m:"V-RAPTOR 8K S35 / [X] S35",f:"Super 35 8K",modes:[
+ ["8K 17:9",8192,4320,26.21,13.82],
+ ["8K 2:1",8192,4096,26.21,13.11],
+ ["8K 2.4:1",8192,3456,26.21,11.06],
+ ["8K 16:9",7680,4320,24.58,13.82],
+ ["6K 17:9",6144,3240,19.66,10.37],
+ ["4K 17:9",4096,2160,13.11,6.91],
+ ["UHD 16:9",3840,2160,12.29,6.91]]},
+{b:"RED",m:"KOMODO 6K / KOMODO-X",f:"Super 35 6K",modes:[
+ ["6K 17:9",6144,3240,27.03,14.26],
+ ["6K 16:9",5760,3240,25.34,14.26],
+ ["6K 2.4:1",6144,2592,27.03,11.40],
+ ["5K 17:9",5120,2700,22.53,11.88],
+ ["4K 17:9",4096,2160,18.02,9.50],
+ ["UHD 16:9",3840,2160,16.90,9.50]]},
+{b:"RED",m:"MONSTRO 8K VV (DSMC2 / RANGER)",f:"Vista Vision 8K",modes:[
+ ["8K 17:9 (FF)", 8192, 4320, 40.96, 21.6],
+ ["8K 2:1", 8192, 4096, 40.96, 20.48],
+ ["8K 2.4:1 (WS)", 8192, 3456, 40.96, 17.28],
+ ["8K 16:9 (HD)", 7680, 4320, 38.4, 21.6],
+ ["7.5K 17:9", 7680, 4080, 38.4, 20.4],
+ ["7.5K 16:9", 7296, 4104, 36.48, 20.52],
+ ["7K 17:9", 7168, 3780, 35.84, 18.9],
+ ["7K 2.4:1", 7168, 3024, 35.84, 15.12],
+ ["7K 16:9", 6720, 3780, 33.6, 18.9],
+ ["6.5K 17:9", 6656, 3536, 33.28, 17.68],
+ ["6K 17:9", 6144, 3240, 30.72, 16.2],
+ ["6K 2.4:1", 6144, 2592, 30.72, 12.96],
+ ["6K 16:9", 5760, 3240, 28.8, 16.2],
+ ["5K 17:9", 5120, 2700, 25.6, 13.5],
+ ["4K 17:9", 4096, 2160, 20.48, 10.8],
+ ["UHD 16:9", 3840, 2160, 19.2, 10.8]]},
+{b:"RED",m:"HELIUM 8K S35",f:"Super 35 8K",modes:[
+ ["8K 17:9 (FF)", 8192, 4320, 29.9, 15.77],
+ ["8K 2:1", 8192, 4096, 29.9, 14.95],
+ ["8K 2.4:1 (WS)", 8192, 3456, 29.9, 12.61],
+ ["8K 16:9 (HD)", 7680, 4320, 28.03, 15.77],
+ ["7.5K 17:9", 7680, 4080, 28.03, 14.89],
+ ["7.5K 16:9", 7296, 4104, 26.63, 14.98],
+ ["7K 17:9", 7168, 3780, 26.16, 13.8],
+ ["7K 16:9", 6720, 3780, 24.53, 13.8],
+ ["6.5K 17:9", 6656, 3536, 24.29, 12.91],
+ ["6K 17:9", 6144, 3240, 22.43, 11.83],
+ ["6K 2.4:1", 6144, 2592, 22.43, 9.46],
+ ["6K 16:9", 5760, 3240, 21.02, 11.83],
+ ["5.5K 17:9", 5600, 2960, 20.44, 10.81],
+ ["5K 17:9", 5120, 2700, 18.69, 9.86],
+ ["4K 17:9", 4096, 2160, 14.95, 7.89],
+ ["UHD 16:9", 3840, 2160, 14.01, 7.89],
+ ["2K 17:9", 2048, 1080, 7.48, 3.94],
+ ["HD 16:9", 1920, 1080, 7.01, 3.94]]},
+{b:"RED",m:"GEMINI 5K S35",f:"Super 35 5K",modes:[
+ ["5K Full Format",5120,3000,30.72,18.00],
+ ["5K 17:9",5120,2700,30.72,16.20],
+ ["5K 16:9",4800,2700,28.80,16.20],
+ ["4K 17:9",4096,2160,24.58,12.96],
+ ["UHD 16:9",3840,2160,23.04,12.96]]},
+{b:"RED",m:"DRAGON 6K S35",f:"Super 35 6K",modes:[
+ ["6K Full Format", 6144, 3160, 30.7, 15.8],
+ ["6K 2:1", 6144, 3072, 30.7, 15.35],
+ ["6K 2.4:1 (WS)", 6144, 2592, 30.7, 12.95],
+ ["6K 16:9 (HD)", 5568, 3132, 27.82, 15.65],
+ ["5.5K 17:9", 5600, 2960, 27.98, 14.79],
+ ["5K 17:9", 5120, 2700, 25.58, 13.49],
+ ["5K 16:9", 4800, 2700, 23.98, 13.49],
+ ["4.5K 17:9", 4608, 2432, 23.04, 12.16],
+ ["4K 17:9", 4096, 2160, 20.47, 10.79],
+ ["4K 2.4:1", 4096, 1728, 20.47, 8.63],
+ ["UHD 16:9", 3840, 2160, 19.19, 10.79],
+ ["3K 17:9", 3072, 1620, 16.59, 8.75, "scaled"],
+ ["2K 17:9", 2048, 1080, 11.06, 5.83, "scaled"],
+ ["HD 16:9", 1920, 1080, 10.37, 5.83, "scaled"]]},
+// ---------- BLACKMAGIC ----------
+{b:"Blackmagic",m:"URSA Cine 12K LF / PYXIS 12K",f:"Large Format 12K",modes:[
+ ["12K 3:2 Open Gate", 12288, 8040, 35.64, 23.32],
+ ["12K 16:9", 12288, 6912, 35.64, 20.05],
+ ["12K 17:9", 12288, 6480, 35.64, 18.79],
+ ["12K 2.4:1", 12288, 5112, 35.64, 14.83],
+ ["12K 6:5", 9648, 8040, 27.98, 23.32],
+ ["9K 3:2 S35", 9408, 6264, 27.29, 18.17],
+ ["9K 16:9 S35", 8688, 4896, 25.2, 14.2],
+ ["9K 17:9 S35", 9312, 4896, 27.01, 14.2],
+ ["9K 2.4:1 S35", 9312, 3864, 27.01, 11.21],
+ ["8K 3:2 Open Gate", 8192, 5360, 35.64, 23.32, "scaled"],
+ ["8K 16:9", 8192, 4608, 35.64, 20.05, "scaled"],
+ ["8K 17:9", 8192, 4320, 35.64, 18.79, "scaled"],
+ ["8K 2.4:1", 8192, 3408, 35.64, 14.83, "scaled"],
+ ["4K 3:2 Open Gate", 4096, 2680, 35.64, 23.32, "scaled"],
+ ["4K 16:9", 4096, 2304, 35.64, 20.05, "scaled"],
+ ["4K 17:9", 4096, 2160, 35.64, 18.79, "scaled"]]},
+{b:"Blackmagic",m:"URSA Mini Pro 12K",f:"Super 35 12K",modes:[
+ ["12K 17:9", 12288, 6480, 27.03, 14.25],
+ ["12K 16:9", 11520, 6480, 25.34, 14.25],
+ ["12K 2.4:1", 12288, 5112, 27.03, 11.24],
+ ["12K anamorphic", 7680, 6408, 16.89, 14.09],
+ ["8K 17:9", 8192, 4320, 27.03, 14.25, "scaled"],
+ ["8K 16:9", 7680, 4320, 25.34, 14.25, "scaled"],
+ ["8K 2.4:1", 8192, 3408, 27.03, 11.24, "scaled"],
+ ["6K Super 16", 6144, 3240, 13.52, 7.13],
+ ["4K 17:9", 4096, 2160, 27.03, 14.25, "scaled"],
+ ["UHD 16:9", 3840, 2160, 25.34, 14.25, "scaled"]]},
+{b:"Blackmagic",m:"URSA Mini Pro 4.6K G2",f:"Super 35 4.6K",modes:[
+ ["4.6K 16:9", 4608, 2592, 25.34, 14.25],
+ ["4.6K 2.4:1", 4608, 1920, 25.34, 10.55],
+ ["4K 16:9", 4096, 2304, 22.52, 12.66],
+ ["4K DCI", 4096, 2160, 22.52, 11.87],
+ ["UHD", 3840, 2160, 21.12, 11.87],
+ ["3K anamorphic", 3072, 2560, 16.89, 14.07],
+ ["2K 16:9", 2048, 1152, 11.26, 6.33],
+ ["2K DCI", 2048, 1080, 11.26, 5.93],
+ ["HD", 1920, 1080, 10.55, 5.93]]},
+{b:"Blackmagic",m:"Pocket 6K / 6K Pro / 6K G2",f:"Super 35 6K",modes:[
+ ["6K 16:9", 6144, 3456, 23.1, 12.99],
+ ["6K 2.4:1", 6144, 2560, 23.1, 9.62],
+ ["5.7K 17:9", 5744, 3024, 21.6, 11.37],
+ ["3.7K 6:5 (anamorphic)", 3728, 3104, 14.02, 11.67],
+ ["2.8K 17:9", 2880, 1512, 10.83, 5.69]]},
+{b:"Blackmagic",m:"Pocket 4K",f:"Micro Four Thirds",modes:[
+ ["4K DCI", 4096, 2160, 18.96, 10.0],
+ ["4K 2.4:1", 4096, 1720, 18.96, 7.96],
+ ["UHD", 3840, 2160, 17.78, 10.0],
+ ["2.8K 4:3 (anamorphic)", 2880, 2160, 13.33, 10.0],
+ ["2.6K 16:9", 2688, 1512, 12.44, 7.0],
+ ["HD", 1920, 1080, 17.78, 10.0, "scaled"]]},
+{b:"Blackmagic",m:"PYXIS 6K / Cinema Camera 6K",f:"Full Frame 6K",modes:[
+ ["6K 3:2 Open Gate", 6048, 4032, 36.0, 24.0],
+ ["6K 16:9", 6048, 3408, 36.0, 20.29],
+ ["6K DCI 17:9", 6048, 3200, 36.0, 19.05],
+ ["6K 2.4:1", 6048, 2520, 36.0, 15.0],
+ ["6:5 anamorphic", 4832, 4032, 28.76, 24.0],
+ ["4K 4:3 S35", 4096, 3072, 24.38, 18.29],
+ ["S16 16:9", 2112, 1184, 12.57, 7.05]]},
+// ---------- CANON ----------
+{b:"Canon",m:"EOS C500 Mark II / C700 FF",f:"Full Frame 5.9K",modes:[
+ ["5.9K FF 17:9", 5952, 3140, 38.1, 20.1],
+ ["4K DCI from FF", 4096, 2160, 38.1, 20.1, "scaled"],
+ ["UHD from FF", 3840, 2160, 35.7, 20.1, "scaled"],
+ ["4K DCI S35 crop", 4096, 2160, 26.2, 13.8, "calc"]]},
+{b:"Canon",m:"EOS C300 Mark III / C70",f:"Super 35 4K DGO",modes:[
+ ["4K DCI", 4096, 2160, 26.2, 13.8],
+ ["UHD", 3840, 2160, 24.6, 13.8],
+ ["2K DCI S16 crop", 2048, 1080, 13.1, 6.91, "calc"],
+ ["2K DCI", 2048, 1080, 26.2, 13.8, "scaled"],
+ ["HD", 1920, 1080, 24.6, 13.8, "scaled"]]},
+{b:"Canon",m:"EOS C400 / C80",f:"Full Frame 6K",modes:[
+ ["6K RAW 17:9", 6000, 3164, 36.0, 19.0],
+ ["4K DCI from FF", 4096, 2160, 36.0, 19.0, "scaled"],
+ ["UHD from FF", 3840, 2160, 33.8, 19.0, "scaled"],
+ ["S35 RAW crop", 4368, 2304, 26.21, 13.82, "calc"],
+ ["S16 RAW crop", 2184, 1152, 13.1, 6.91, "calc"]]},
+{b:"Canon",m:"EOS R5 C",f:"Full Frame 8K",modes:[
+ ["8K DCI", 8192, 4320, 36.0, 19.0],
+ ["8K UHD", 7680, 4320, 33.8, 19.0],
+ ["4K DCI from FF", 4096, 2160, 36.0, 19.0, "scaled"],
+ ["UHD from FF", 3840, 2160, 33.8, 19.0, "scaled"]]},
+// ---------- PANASONIC ----------
+{b:"Panasonic",m:"VariCam 35 / LT",f:"Super 35 4K",modes:[
+ ["4K DCI", 4096, 2160, 24.576, 12.96],
+ ["UHD", 3840, 2160, 23.04, 12.96],
+ ["HD", 1920, 1080, 23.04, 12.96, "scaled"]]},
+{b:"Panasonic",m:"LUMIX S1H / BS1H",f:"Full Frame 6K",approx:true,modes:[
+ ["6K 3:2", 5952, 3968, 35.6, 23.73],
+ ["5.9K 16:9", 5888, 3312, 35.22, 19.81],
+ ["UHD from FF", 3840, 2160, 35.22, 19.81, "scaled"],
+ ["C4K S35 pixel-by-pixel", 4096, 2160, 24.2, 12.76, "calc"],
+ ["UHD S35 pixel-by-pixel", 3840, 2160, 22.69, 12.76, "calc"],
+ ["Anamorphic 4K 4:3 S35", 3328, 2496, 19.66, 14.75, "calc"]]},
+// ---------- PHANTOM ----------
+{b:"Phantom",m:"Flex4K",f:"Super 35 high-speed",modes:[
+ ["4K 16:9 native", 4096, 2304, 27.6, 15.5],
+ ["4K 1.85:1", 4096, 2216, 27.6, 14.9],
+ ["4K DCI", 4096, 2160, 27.6, 14.5],
+ ["4K 2.39:1", 4096, 1712, 27.6, 11.5],
+ ["UHD overscan", 3840, 2160, 27.6, 15.5, "scaled"],
+ ["UHD crop", 3840, 2160, 25.8, 14.5],
+ ["Anamorphic 2.0", 2752, 2304, 27.6, 15.5, "scaled"],
+ ["2K 4:3", 2048, 1536, 13.8, 10.4],
+ ["2K 16:9", 2048, 1152, 13.8, 7.8],
+ ["2K DCI", 2048, 1080, 13.8, 7.3],
+ ["HD crop", 1920, 1080, 12.9, 7.3]]},
+{b:"Phantom",m:"VEO4K 990 / 590",f:"Super 35 high-speed",modes:[
+ ["4K 16:9 native", 4096, 2304, 27.6, 15.5],
+ ["4K 1.85:1", 4096, 2216, 27.6, 14.9],
+ ["4K DCI", 4096, 2160, 27.6, 14.5],
+ ["4K 2.39:1", 4096, 1712, 27.6, 11.5],
+ ["UHD overscan", 3840, 2160, 27.6, 15.5, "scaled"],
+ ["UHD crop", 3840, 2160, 25.8, 14.5],
+ ["2K 16:9", 2048, 1152, 13.8, 7.8],
+ ["2K DCI", 2048, 1080, 13.8, 7.3],
+ ["HD crop", 1920, 1080, 12.9, 7.3]]},
+{b:"Phantom",m:"v2640",f:"High-speed 4 MP",modes:[
+ ["Full sensor", 2048, 1952, 27.6, 26.3],
+ ["2048 × 1440", 2048, 1440, 27.6, 19.4],
+ ["HD", 1920, 1080, 25.9, 14.6],
+ ["1792 × 720", 1792, 720, 24.2, 9.7]]},
+{b:"Phantom",m:"TMX 7510 / 5010",f:"Ultra high-speed 1 MP",modes:[
+ ["Full sensor",1280,800,23.68,14.80],
+ ["720p crop",1280,720,23.68,13.32]]},
+// ---------- DJI ----------
+{b:"DJI",m:"Ronin 4D 8K (Zenmuse X9-8K)",f:"Full Frame 8K",approx:true,modes:[
+ ["8K 17:9",8192,4320,36.00,19.00],
+ ["8K 2.39:1",8192,3432,36.00,15.08],
+ ["4K DCI from FF",4096,2160,36.00,19.00,"scaled"],
+ ["UHD from FF",3840,2160,33.75,19.00,"scaled"]]},
+{b:"DJI",m:"Ronin 4D 6K (Zenmuse X9-6K)",f:"Full Frame 6K",approx:true,modes:[
+ ["6K 17:9",6016,3168,35.90,18.90],
+ ["4K DCI from FF",4096,2160,35.90,18.90,"scaled"],
+ ["UHD from FF",3840,2160,33.60,18.90,"scaled"]]},
+{b:"DJI",m:"Inspire 3 (Zenmuse X9-8K Air)",f:"Full Frame 8K drone",approx:true,modes:[
+ ["8K 17:9",8192,4320,36.00,19.00],
+ ["8K 2.39:1",8192,3432,36.00,15.08],
+ ["4K DCI from FF",4096,2160,36.00,19.00,"scaled"],
+ ["UHD from FF",3840,2160,33.75,19.00,"scaled"]]},
+{b:"DJI",m:"Inspire 2 (Zenmuse X7)",f:"Super 35 6K drone",modes:[
+ ["6K CinemaDNG", 6016, 3200, 23.5, 12.5],
+ ["5.7K 16:9 CinemaDNG", 5760, 3240, 22.5, 12.7],
+ ["5.2K 2.4:1 ProRes", 5280, 2160, 23.5, 9.6, "scaled"],
+ ["DCI 4K", 4096, 2160, 23.5, 12.5, "scaled"],
+ ["UHD", 3840, 2160, 22.5, 12.7, "scaled"],
+ ["3.9K crop", 3944, 2088, 15.4, 8.2]]},
+{b:"DJI",m:"Mavic 3 Pro / Cine (Hasselblad)",f:"4/3 drone",approx:true,modes:[
+ ["5.1K 17:9",5120,2700,17.30,9.12],
+ ["DCI 4K",4096,2160,17.30,9.12,"scaled"],
+ ["UHD",3840,2160,17.30,9.73,"scaled"]]},
+{b:"DJI",m:"Air 3 / Mini 4 Pro",f:"1/1.3-inch drone",approx:true,modes:[
+ ["UHD",3840,2160,9.60,5.40,"scaled"],
+ ["HD",1920,1080,9.60,5.40,"scaled"]]},
+// ---------- OTHER ----------
+{b:"Other",m:"iPhone 13 Pro / 13 Pro Max (main 26 mm)",f:"1/1.65-inch phone",approx:true,modes:[
+ ["Photo 4:3 full sensor",4032,3024,7.66,5.75],
+ ["4K UHD video",3840,2160,7.66,4.31,"scaled"],
+ ["HD video",1920,1080,7.66,4.31,"scaled"]]},
+{b:"Other",m:"iPhone 13 / 13 mini (main 26 mm)",f:"1/1.9-inch phone",approx:true,modes:[
+ ["Photo 4:3 full sensor",4032,3024,6.85,5.14],
+ ["4K UHD video",3840,2160,6.85,3.86,"scaled"],
+ ["HD video",1920,1080,6.85,3.86,"scaled"]]},
+{b:"Other",m:"iPhone 15 / 16 Pro (main 24 mm)",f:"1/1.28-inch phone",approx:true,modes:[
+ ["UHD",3840,2160,9.80,5.51,"scaled"],
+ ["HD",1920,1080,9.80,5.51,"scaled"]]},
+{b:"Other",m:"GoPro HERO12 / 13",f:"1/1.9-inch action",approx:true,modes:[
+ ["5.3K 16:9",5312,2988,6.40,3.60],
+ ["UHD",3840,2160,6.40,3.60,"scaled"]]}
+];
+
+const FF_DIAG = Math.hypot(36,24);
+const BRANDS = [...new Set(CAMS.map(c=>c.b))];
+const $ = id => document.getElementById(id);
+const fx = (n,d=2)=>Number(n).toFixed(d);
+const gcd=(a,b)=>b?gcd(b,a%b):a;
+function aspect(w,h){const r=w/h;const known=[[1,"1:1"],[1.25,"5:4"],[1.2,"6:5"],[1.333,"4:3"],[1.5,"3:2"],[1.6,"16:10"],[1.778,"16:9"],[1.896,"17:9"],[2,"2:1"],[2.39,"2.39:1"],[2.4,"2.4:1"],[0.889,"8:9"]];let best=null;for(const[k,l]of known){const d=Math.abs(r-k)/k;if(!best||d<best.d)best={d,l}}if(best.d<0.008)return best.l+" ("+fx(r,2)+":1)";if(best.d<0.04)return "≈"+best.l+" ("+fx(r,2)+":1)";return fx(r,2)+":1"}
+const isScaled = m => m[5]==="scaled"||m[5]==="upscaled";
+const pitch = m => isScaled(m)?"—":fx(m[3]/m[1]*1000,2)+" µm";
+// Density = pixels per mm of film back. Scaled modes give the effective density of the output image.
+const dens = m => m[1]/m[3];
+const mmpx = m => m[3]/m[1];
+const pd = v => String(+v.toPrecision(6));
+const densCell = m => pd(mmpx(m))+(isScaled(m)?' <span class="note">eff.</span>':"");
+function nativeOf(c){
+  const raw=c.modes.filter(m=>!isScaled(m));
+  if(!raw.length)return null;
+  const best=raw.reduce((a,m)=>m[1]*m[2]>a[1]*a[2]?m:a);
+  const mm = c.pd || best[3]/best[1];
+  return {pitch:mm*1000, mm, dens:1/mm, mp:best[1]*best[2]/1e6};
+}
+const crop = m => fx(FF_DIAG/Math.hypot(m[3],m[4]),2)+"×";
+const inch = mm => fx(mm/25.4,3);
+
+let state={cam:0,mode:0,brands:new Set(),q:""};
+try{const s=JSON.parse(localStorage.getItem("fbf")||"{}");if(Number.isInteger(s.cam)&&CAMS[s.cam])state.cam=s.cam}catch(e){}
+function save(){try{localStorage.setItem("fbf",JSON.stringify({cam:state.cam}))}catch(e){}}
+
+// ---- rail ----
+function renderChips(){
+  $("brandchips").innerHTML = BRANDS.map(b=>`<button class="chip" aria-pressed="${state.brands.has(b)}" data-b="${b}">${b}</button>`).join("");
+}
+$("brandchips").addEventListener("click",e=>{const b=e.target.dataset.b;if(!b)return;state.brands.has(b)?state.brands.delete(b):state.brands.add(b);renderChips();renderList()});
+$("camq").addEventListener("input",e=>{state.q=e.target.value.toLowerCase();renderList()});
+function renderList(){
+  let html="",last="";
+  CAMS.forEach((c,i)=>{
+    if(state.brands.size&&!state.brands.has(c.b))return;
+    if(state.q&&!(c.b+" "+c.m+" "+c.f).toLowerCase().includes(state.q))return;
+    if(c.b!==last){html+=`<div class="grouphead">${c.b}</div>`;last=c.b}
+    html+=`<button class="camitem" data-i="${i}" aria-current="${i===state.cam}"><span>${c.m}</span><small>${c.modes.length} modes</small></button>`;
+  });
+  $("camlist").innerHTML = html||`<div class="empty">No cameras match.</div>`;
+}
+$("camlist").addEventListener("click",e=>{const b=e.target.closest(".camitem");if(!b)return;state.cam=+b.dataset.i;state.mode=0;save();renderList();renderCam()});
+
+// ---- camera view ----
+function renderCam(){
+  const c=CAMS[state.cam];
+  const maxW=Math.max(...c.modes.map(m=>m[3])), maxH=Math.max(...c.modes.map(m=>m[4]));
+  const maxRes=c.modes.reduce((a,m)=>m[1]*m[2]>a[1]*a[2]?m:a);
+  $("cBrand").textContent=c.b;
+  $("cName").textContent=c.m;
+  const nat=nativeOf(c);
+  $("cFacts").innerHTML=`<span>Format <b>${c.f}</b></span><span>Max area <b>${fx(maxW)} × ${fx(maxH)} mm</b></span><span>Max res <b>${maxRes[1]} × ${maxRes[2]}</b></span>`+(nat?`<span>Pixel density <b>${c.pd?String(c.pd):pd(nat.mm)} mm/px</b>${c.pd?"":' <span class="note">(from max mode)</span>'}</span><span>Pitch <b>${fx(nat.pitch,2)} µm · ${fx(nat.dens,1)} px/mm</b></span><span>Max <b>${fx(nat.mp,1)} MP</b></span>`:`<span>Native density <b>not published</b> (scaled modes only)</span>`);
+  $("cFlag").innerHTML=c.approx?`<span class="pill">check · approximate</span>`:`<span class="pill ok">manufacturer spec</span>`;
+  $("modes").innerHTML=c.modes.map((m,i)=>`<tr data-i="${i}" class="${i===state.mode?"sel":""}">
+    <td class="lbl">${m[0]}${m[5]?` <span class="note">· ${m[5]==="calc"?"calculated from pixel density":m[5]}</span>`:""}</td>
+    <td class="num">${m[1]} × ${m[2]}</td>
+    <td class="num">${aspect(m[1],m[2])}</td>
+    <td class="num">${fx(m[3])} × ${fx(m[4])}</td>
+    <td class="num">${inch(m[3])} × ${inch(m[4])}</td>
+    <td class="num">${densCell(m)}</td>
+    <td class="num">${crop(m)}</td></tr>`).join("");
+  renderMode();
+}
+$("modes").addEventListener("click",e=>{const r=e.target.closest("tr");if(!r)return;state.mode=+r.dataset.i;[...$("modes").children].forEach((t,i)=>t.classList.toggle("sel",i===state.mode));renderMode()});
+
+function renderMode(){
+  const c=CAMS[state.cam], m=c.modes[state.mode];
+  const W=m[3],H=m[4];
+  $("readout").innerHTML=`
+   <div class="ro big"><div class="k">Film back · ${m[0]}</div><div class="v">${fx(W)} × ${fx(H)} <small>mm</small></div></div>
+   <div class="ro"><div class="k">Inches</div><div class="v">${inch(W)} × ${inch(H)}</div></div>
+   <div class="ro"><div class="k">Resolution</div><div class="v">${m[1]} × ${m[2]}</div></div>
+   <div class="ro"><div class="k">Diagonal</div><div class="v">${fx(Math.hypot(W,H))} <small>mm</small></div></div>
+   <div class="ro"><div class="k" title="Full frame = 36 × 24 mm, Super 35 = 24.89 × 18.66 mm">Crop vs full frame / S35</div><div class="v">${crop(m)} <small>/ ${fx(Math.hypot(24.89,18.66)/Math.hypot(W,H),2)}×</small></div></div>
+   <div class="ro" style="grid-column:1/-1"><div class="k">Pixel density${isScaled(m)?" · effective, scaled from read area":""}</div><div class="v">${pd(mmpx(m))} <small>mm/px</small> · ${fx(dens(m),1)} <small>px/mm</small> · ${fx(dens(m)*25.4,0)} <small>ppi</small></div></div>`;
+  const units=[["mm","Nuke, Blender, Houdini, C4D",fx(W,3),fx(H,3)],["in","Maya",inch(W),inch(H)],["cm","3DEqualizer",fx(W/10,4),fx(H/10,4)]];
+  $("copyrow").innerHTML=`<div class="copyhead">Copy film back</div>`+units.map(([u,apps,w,h])=>`<div class="copyunit"><div class="cu-label"><b>${u}</b><span>${apps}</span></div>
+    <button class="btn" data-copy="${w}" aria-label="Copy width ${w} ${u}">W <code>${w}</code></button>
+    <button class="btn" data-copy="${h}" aria-label="Copy height ${h} ${u}">H <code>${h}</code></button></div>`).join("");
+  drawSensor(c,state.mode);
+}
+$("copyrow").addEventListener("click",e=>{const b=e.target.closest("[data-copy]");if(b)copy(b.dataset.copy)});
+
+function drawSensor(c,sel){
+  const svg=$("sensor"), VW=600, VH=400, pad=40;
+  const maxW=Math.max(...c.modes.map(m=>m[3])), maxH=Math.max(...c.modes.map(m=>m[4]));
+  const s=Math.min((VW-pad*2)/maxW,(VH-pad*2)/maxH);
+  const cx=VW/2, cy=VH/2+6;
+  let g=`<rect x="${cx-maxW*s/2}" y="${cy-maxH*s/2}" width="${maxW*s}" height="${maxH*s}" fill="var(--panel)" stroke="var(--muted)" stroke-dasharray="4 4" stroke-width="1"/>`;
+  c.modes.forEach((m,i)=>{if(i===sel)return;g+=`<rect x="${cx-m[3]*s/2}" y="${cy-m[4]*s/2}" width="${m[3]*s}" height="${m[4]*s}" fill="none" stroke="var(--line)" stroke-width="1"/>`});
+  const m=c.modes[sel], x=cx-m[3]*s/2, y=cy-m[4]*s/2, w=m[3]*s, h=m[4]*s;
+  g+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="var(--frame-soft)" stroke="var(--frame)" stroke-width="2"/>`;
+  // corner ticks like frame lines
+  const t=12;[[x,y,1,1],[x+w,y,-1,1],[x,y+h,1,-1],[x+w,y+h,-1,-1]].forEach(([px,py,dx,dy])=>{g+=`<path d="M${px+dx*t} ${py} H${px} V${py+dy*t}" fill="none" stroke="var(--accent)" stroke-width="3"/>`});
+  g+=`<line x1="${cx-6}" y1="${cy}" x2="${cx+6}" y2="${cy}" stroke="var(--accent)" stroke-width="1.5"/><line x1="${cx}" y1="${cy-6}" x2="${cx}" y2="${cy+6}" stroke="var(--accent)" stroke-width="1.5"/>`;
+  g+=`<text x="${cx}" y="${Math.max(16,y-8)}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13" fill="var(--frame)">${fx(m[3])} mm</text>`;
+  g+=`<text x="${Math.min(VW-8,x+w+8)}" y="${cy}" font-family="JetBrains Mono, monospace" font-size="13" fill="var(--frame)" dominant-baseline="middle" transform="rotate(90 ${Math.min(VW-8,x+w+8)} ${cy})" text-anchor="middle">${fx(m[4])} mm</text>`;
+  g+=`<text x="${cx}" y="${Math.min(VH-8,y+h+20)}" text-anchor="middle" font-family="Barlow, sans-serif" font-size="13" fill="var(--muted)">${m[0]} · ${m[1]}×${m[2]}</text>`;
+  svg.innerHTML=g;
+}
+
+// ---- resolution search ----
+const PRESETS=[[1920,1080],[2048,1080],[3840,2160],[4096,2160],[4096,2304],[4448,3096],[4608,3164],[5120,2700],[6144,3240],[7680,4320],[8192,4320]];
+$("presets").innerHTML=PRESETS.map(([w,h])=>`<button class="chip" data-w="${w}" data-h="${h}">${w}×${h}</button>`).join("");
+$("presets").addEventListener("click",e=>{const b=e.target.closest("[data-w]");if(!b)return;$("rq").value=b.dataset.w+"x"+b.dataset.h;search()});
+$("rbrand").innerHTML+=BRANDS.map(b=>`<option>${b}</option>`).join("");
+["rq","rtol","rbrand"].forEach(id=>$(id).addEventListener("input",search));
+
+// Loose query: "3840" matches width OR height, "3840x" width only, "x2160" height only,
+// "3840x2160" both. Tolerance widens each comparison by a percentage.
+function parseQuery(q){
+  q=q.toLowerCase().replace(/\s+/g," ").trim();
+  const two=q.match(/^(\d+)?\s*[x×*:, ]\s*(\d+)?$/);
+  if(two&&(two[1]||two[2]))return{w:two[1]?+two[1]:null,h:two[2]?+two[2]:null,any:false};
+  const one=q.match(/^(\d+)$/);
+  if(one)return{w:+one[1],h:null,any:true};
+  return null;
+}
+function search(){
+  const q=parseQuery($("rq").value), tol=+$("rtol").value, brand=$("rbrand").value;
+  const near=(a,b)=>tol?Math.abs(a-b)/b<=tol:a===b;
+  const rows=[];
+  let hint="Type one number to match either side, or W×H for both. Add x before or after to pin a side, like 3840x or x2160.";
+  if(q){
+    if(q.any)hint=`Showing modes ${tol?"near":"with"} ${q.w} px on either side.`;
+    else if(q.w&&q.h)hint=`Showing modes ${tol?"near":"at"} ${q.w} × ${q.h}.`;
+    else if(q.w)hint=`Showing modes ${tol?"near":"with"} ${q.w} px wide.`;
+    else hint=`Showing modes ${tol?"near":"with"} ${q.h} px tall.`;
+    CAMS.forEach((c,ci)=>{
+      if(brand&&c.b!==brand)return;
+      c.modes.forEach((m,mi)=>{
+        let ok, dist;
+        if(q.any){ok=near(m[1],q.w)||near(m[2],q.w);dist=Math.min(Math.abs(m[1]-q.w),Math.abs(m[2]-q.w))}
+        else{ok=(q.w==null||near(m[1],q.w))&&(q.h==null||near(m[2],q.h));dist=(q.w?Math.abs(m[1]-q.w):0)+(q.h?Math.abs(m[2]-q.h):0)}
+        if(ok)rows.push([c,m,ci,mi,dist]);
+      });
+    });
+    if(tol)rows.sort((a,b)=>a[4]-b[4]);
+  }
+  $("rhint").textContent=hint;
+  const cams=new Set(rows.map(r=>r[2])).size;
+  $("rcount").innerHTML=`<span>${rows.length}</span> modes on <span>${cams}</span> cameras`;
+  $("results").innerHTML=rows.length?rows.map(([c,m,ci,mi])=>`<tr data-c="${ci}" data-m="${mi}">
+    <td class="lbl"><b>${c.b}</b> ${c.m}${c.approx?' <span class="pill">check</span>':""}</td>
+    <td class="lbl">${m[0]}${m[5]?` <span class="note">· ${m[5]==="calc"?"calculated from pixel density":m[5]}</span>`:""}</td>
+    <td class="num">${m[1]} × ${m[2]}</td>
+    <td class="num">${fx(m[3])} × ${fx(m[4])}</td>
+    <td class="num">${inch(m[3])} × ${inch(m[4])}</td>
+    <td class="num">${densCell(m)}</td>
+    <td class="num">${crop(m)}</td></tr>`).join("")
+   :`<tr><td colspan="7" class="empty">No modes match. Try a single number or a wider tolerance.</td></tr>`;
+}
+$("results").addEventListener("click",e=>{const r=e.target.closest("tr[data-c]");if(!r)return;state.cam=+r.dataset.c;state.mode=+r.dataset.m;save();setTab("cam");renderList();renderCam()});
+
+// ---- tabs / util ----
+function setTab(t){$("tab-cam").setAttribute("aria-selected",t==="cam");$("tab-res").setAttribute("aria-selected",t==="res");$("view-cam").hidden=t!=="cam";$("view-res").hidden=t!=="res";if(t==="res")search();window.scrollTo({top:0})}
+$("tab-cam").onclick=()=>setTab("cam");$("tab-res").onclick=()=>setTab("res");
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("on");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("on"),1600)}
+function copy(text){
+  const done=()=>toast("Copied: "+text);
+  try{navigator.clipboard.writeText(text).then(done,()=>fallback(text))}catch(e){fallback(text)}
+  function fallback(v){const ta=document.createElement("textarea");ta.value=v;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done()}catch(e){toast("Select and copy: "+v)}ta.remove()}
+}
+renderChips();renderList();renderCam();
+</script>
+
+</body></html>
