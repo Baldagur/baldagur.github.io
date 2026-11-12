@@ -410,6 +410,16 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:60
         <li><b>Moving camera:</b> if the shot is split into two plates, multiply the scaled plate's camera translation and focus distance by <code>1/k</code>. Keep rotation, focal length and timing identical. Stop down about <code>k</code>× on the closer plate to match depth of field.</li>
       </ul>
     </div>
+    <div class="card fpnotes">
+      <h3 class="conetitle" style="color:var(--ink)">Formulas</h3>
+      <p style="margin:6px 0 0"><code>d</code> main distance · <code>c</code> lens height · <code>h</code> actor height · <code>rₘ</code> main riser · <code>k</code> scale (× factor for bigger, 1 ÷ factor for smaller). Heights are measured from the stage floor.</p>
+      <div class="tablewrap" style="margin-top:10px">
+        <table class="fovtable">
+          <thead><tr><th>Result</th><th>Formula</th><th>With your numbers</th></tr></thead>
+          <tbody id="fp-formulas"></tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <p class="disclaimer">Film back is the physical sensor area each mode records (width × height). Modes marked <b>scaled</b> read a larger area and downsample, so the film back is the read area, not the pixel count times pitch. Values come from manufacturer specs and common VFX references; cameras flagged <span class="pill">check</span> have approximate figures. Confirm against the camera report or metadata on a real job, since firmware updates add and change modes.</p>
@@ -1198,6 +1208,23 @@ renderChips();renderList();renderCam();$("tabdesc").innerHTML=TABDESC.cam;
     el('fp-rFpsS').textContent = st.factor === 1 ? 'No change.' :
       `Exact ${r.fpsExact.toFixed(2)} fps, plays back at ${(st.fps / r.fpsExact * 100).toFixed(0)}% speed. ${st.mode === 'big' ? 'Overcrank' : 'Undercrank'} for physical action only.`;
     draw(r);
+    renderFormulas(r);
+  }
+  function renderFormulas(r) {
+    const n = v => toU(v).toFixed(2), u = st.unit, kk = r.kk;
+    const ks = kk.toFixed(3);
+    const rows = [
+      ['Scale', st.mode === 'big' ? 'k = factor' : 'k = 1 ÷ factor', st.mode === 'big' ? `k = ${st.factor.toFixed(2)}` : `k = 1 ÷ ${st.factor.toFixed(2)} = ${ks}`],
+      ['Scaled character distance', 'dₛ = d ÷ k', `${n(r.d)} ÷ ${ks} = ${n(r.ds)} ${u}`],
+      ['Main riser (Auto)', 'k ≥ 1: rₘ = 0<br>k &lt; 1: rₘ = c × (1 − k)', st.rmMode === 'auto' ? (kk >= 1 ? `rₘ = 0 ${u}` : `${n(st.cam)} × (1 − ${ks}) = ${n(r.rm)} ${u}`) : `Manual: rₘ = ${n(r.rm)} ${u}`],
+      ['Scaled character riser', 'rₛ = c + (rₘ − c) ÷ k', `${n(st.cam)} + (${n(r.rm)} − ${n(st.cam)}) ÷ ${ks} = ${n(r.rs)} ${u}`],
+      ['Reads as', 'h × k', `${n(st.actor)} × ${ks} = ${n(st.actor * kk)} ${u}`],
+      ['Frame rate', 'fps × √k', `${st.fps} × √${ks} = ${r.fpsExact.toFixed(2)} fps`],
+      ['Playback speed', '1 ÷ √k', `${(100 / Math.sqrt(kk)).toFixed(0)}%`],
+      ['Moving camera, scaled plate', 'translation × 1 ÷ k<br>focus distance × 1 ÷ k', `× ${(1 / kk).toFixed(3)}`],
+      ['Depth of field, closer plate', 'f-number × max(k, 1 ÷ k)', `× ${Math.max(kk, 1 / kk).toFixed(2)} (e.g. f/2.8 → f/${(2.8 * Math.max(kk, 1 / kk)).toFixed(1)})`]
+    ];
+    el('fp-formulas').innerHTML = rows.map(([a, f, v]) => `<tr><td>${a}</td><td class="num">${f}</td><td class="num">${v}</td></tr>`).join('');
   }
   function startDrag(e) {
     e.preventDefault();
