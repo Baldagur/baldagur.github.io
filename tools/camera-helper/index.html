@@ -147,6 +147,35 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:60
 .conetitle{font-family:var(--f-display);font-size:20px;letter-spacing:.06em;text-transform:uppercase;margin:0}
 .legend2{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:8px}
 .sw{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px}
+/* Forced perspective tab */
+.fpgrid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;margin-top:20px;align-items:start}
+@media (max-width:860px){.fpgrid{grid-template-columns:minmax(0,1fr)}}
+.fpctl{display:flex;flex-direction:column;gap:16px}
+.fpfield{display:flex;flex-direction:column;gap:6px}
+.fplbl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.fplbl output{font-family:var(--f-mono);font-size:14px;color:var(--ink);letter-spacing:0;text-transform:none}
+.fpctl input[type=range]{width:100%;accent-color:var(--accent)}
+.fpctl #fp-scale{accent-color:var(--frame)}
+.fpseg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.fpseg button{font-family:var(--f-display);font-size:15px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:7px 6px;border:0;background:transparent;color:var(--muted);cursor:pointer}
+.fpseg button+button{border-left:1px solid var(--line)}
+.fpseg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.fprow2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fpnum{display:flex;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:6px}
+.fpnum input[type=number]{border:0;background:transparent;font-family:var(--f-mono);font-size:14px;min-width:0}
+.fpnum span{font-family:var(--f-mono);font-size:12px;color:var(--muted);padding-right:10px}
+.fpstage svg{display:block;width:100%;height:auto;touch-action:none;user-select:none}
+.fpres{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:20px}
+@media (max-width:860px){.fpres{grid-template-columns:minmax(0,1fr)}}
+.fpres .k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.fpres .v{font-family:var(--f-mono);font-size:32px;line-height:1.1;margin-top:4px;font-variant-numeric:tabular-nums}
+.fpres .s{font-size:13px;color:var(--muted);margin-top:6px}
+.fpres .card.hl{background:var(--accent-soft);border-color:var(--accent)}
+.fpres .card.hl .v{color:var(--accent-ink)}
+.fpnotes{margin-top:20px;font-size:14px;color:var(--muted)}
+.fpnotes ul{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;max-width:95ch}
+.fpnotes b{color:var(--ink);font-weight:600}
+.fpnotes code{font-family:var(--f-mono);font-size:12.5px;color:var(--ink)}
 </style>
 
 <div class="wrap">
@@ -167,9 +196,10 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:60
         </div>
       </div>
       <div class="tabgroup">
-        <span class="tglabel">Lens tool</span>
+        <span class="tglabel">Tools</span>
         <div class="tabs tabs-tool">
           <button class="tab" role="tab" id="tab-lens" aria-selected="false">Match lens</button>
+          <button class="tab" role="tab" id="tab-fp" aria-selected="false">Forced perspective</button>
         </div>
       </div>
     </nav>
@@ -297,6 +327,87 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:60
       <div class="conehead"><h3 class="conetitle">Sensor and field of view, top view</h3><span class="note" id="conenote"></span></div>
       <div class="diagram"><svg id="cone" viewBox="0 0 900 400" role="img" aria-label="Side-by-side sensor and field-of-view cones"></svg></div>
       <div class="legend2"><span><i class="sw" style="background:var(--frame)"></i>A: reference camera</span><span><i class="sw" style="background:var(--accent)"></i>B: matching camera</span><span>Both lenses share the same optical centre, so overlapping cones mean matching framing.</span></div>
+    </div>
+  </section>
+
+  <section id="view-fp" hidden>
+    <div class="fpgrid">
+      <div class="card fpctl">
+        <div class="fpfield">
+          <div class="fplbl">Units</div>
+          <div class="fpseg" id="fp-units">
+            <button type="button" data-u="m" aria-pressed="true">Metres</button>
+            <button type="button" data-u="ft" aria-pressed="false">Feet</button>
+          </div>
+        </div>
+        <div class="fpfield">
+          <div class="fplbl"><label for="fp-dist">Main character → camera</label><output id="fp-distOut"></output></div>
+          <input type="range" id="fp-dist" min="0.5" max="20" step="0.05" value="4">
+        </div>
+        <div class="fpfield">
+          <div class="fplbl">Scaled character should look</div>
+          <div class="fpseg" id="fp-mode">
+            <button type="button" data-m="big" aria-pressed="true">Bigger ×</button>
+            <button type="button" data-m="small" aria-pressed="false">Smaller ÷</button>
+          </div>
+          <div class="fplbl"><label for="fp-scale">Factor</label><output id="fp-scaleOut"></output></div>
+          <input type="range" id="fp-scale" min="1" max="5" step="0.05" value="1.5">
+          <div class="chips" id="fp-presets">
+            <button type="button" class="chip" data-v="1.25">1.25</button>
+            <button type="button" class="chip" data-v="1.33">1.33</button>
+            <button type="button" class="chip" data-v="1.5">1.5</button>
+            <button type="button" class="chip" data-v="2">2</button>
+            <button type="button" class="chip" data-v="3">3</button>
+          </div>
+        </div>
+        <div class="fprow2">
+          <div class="fpfield">
+            <div class="fplbl"><label for="fp-cam">Lens height</label></div>
+            <div class="fpnum"><input id="fp-cam" type="number" step="0.05" min="0" value="1.6"><span class="fp-u">m</span></div>
+          </div>
+          <div class="fpfield">
+            <div class="fplbl"><label for="fp-actor">Actor height</label></div>
+            <div class="fpnum"><input id="fp-actor" type="number" step="0.05" min="0.3" value="1.75"><span class="fp-u">m</span></div>
+          </div>
+        </div>
+        <div class="fpfield">
+          <div class="fplbl"><label for="fp-rm">Main character riser</label></div>
+          <div class="fpseg" id="fp-rmmode">
+            <button type="button" data-r="auto" aria-pressed="true">Auto</button>
+            <button type="button" data-r="manual" aria-pressed="false">Manual</button>
+          </div>
+          <div class="fpnum"><input id="fp-rm" type="number" step="0.05" min="0" value="0" disabled><span class="fp-u">m</span></div>
+        </div>
+        <div class="fpfield">
+          <div class="fplbl"><label for="fp-fps">Project frame rate</label></div>
+          <select id="fp-fps">
+            <option value="23.976">23.976</option>
+            <option value="24" selected>24</option>
+            <option value="25">25</option>
+            <option value="29.97">29.97</option>
+            <option value="30">30</option>
+          </select>
+        </div>
+      </div>
+      <div class="card fpstage">
+        <div class="conehead"><h3 class="conetitle">Side view</h3><span class="note">Drag the main character to change the distance</span></div>
+        <div class="diagram"><svg id="fp-svg" viewBox="0 0 800 380" role="img" aria-label="Side view of camera, main character and scaled character"></svg></div>
+        <div class="legend2"><span><i class="sw" style="background:var(--accent)"></i>Main character</span><span><i class="sw" style="background:var(--frame)"></i>Scaled character, real size where they stand</span><span><i class="sw" style="border-top:2px dashed var(--frame);height:0"></i>How they read on camera</span></div>
+      </div>
+    </div>
+    <div class="fpres">
+      <div class="card hl"><div class="k">Place scaled character at</div><div class="v" id="fp-rDist"></div><div class="s" id="fp-rDistS"></div></div>
+      <div class="card"><div class="k" id="fp-rRiserK">Riser</div><div class="v" id="fp-rRiser"></div><div class="s" id="fp-rRiserS"></div></div>
+      <div class="card"><div class="k">Recommended frame rate</div><div class="v" id="fp-rFps"></div><div class="s" id="fp-rFpsS"></div></div>
+    </div>
+    <div class="card fpnotes">
+      <h3 class="conetitle" style="color:var(--ink)">On set</h3>
+      <ul>
+        <li><b>Distance:</b> with the same lens, a character looks <code>k</code> times bigger at <code>1/k</code> of the distance. Smaller means further away.</li>
+        <li><b>Feet line up</b> only if both characters' floors sit on the same sight line from the lens. Lens height and both risers are measured from the stage floor. <b>Auto</b> puts the riser under whichever character is nearer the lens. <b>Manual</b> lets you set the main character's riser, and the scaled character's riser follows: <code>lens + (main riser − lens) ÷ k</code>.</li>
+        <li><b>Frame rate</b> follows the miniature rule, <code>fps × √k</code>. It sells weight in anything gravity drives: falls, cloth, hair, water, props. For dialogue and lip sync, shoot at project rate and retime only those elements.</li>
+        <li><b>Moving camera:</b> if the shot is split into two plates, multiply the scaled plate's camera translation and focus distance by <code>1/k</code>. Keep rotation, focal length and timing identical. Stop down about <code>k</code>× on the closer plate to match depth of field.</li>
+      </ul>
     </div>
   </section>
 
@@ -846,10 +957,11 @@ $("results").addEventListener("click",e=>{const r=e.target.closest("tr[data-c]")
 const TABDESC={
   cam:"<b>By camera.</b> Pick a camera to see every recording mode with its resolution and film back (sensor area in mm and inches). Click a row to highlight that area on the sensor and copy the width and height for Nuke, Maya, Blender or 3DEqualizer.",
   res:"<b>By resolution.</b> Enter a plate size to find which cameras and modes record it. One number matches either side, W×H matches both, and the tolerance setting finds near matches. Click a result to open that camera.",
-  lens:"<b>Match lens.</b> Pick the reference camera, its mode and lens, then the second camera. You get the focal length that gives the same framing, the nearest prime, and diagrams of both fields of view. Turn on Unlink cameras to set both lenses yourself and compare."
+  lens:"<b>Match lens.</b> Pick the reference camera, its mode and lens, then the second camera. You get the focal length that gives the same framing, the nearest prime, and diagrams of both fields of view. Turn on Unlink cameras to set both lenses yourself and compare.",
+  fp:"<b>Forced perspective.</b> Set how far the main character stands from the lens and how much bigger or smaller the other character should read. You get where to place them, the riser that lines up both pairs of feet, and the frame rate that sells their scale."
 };
-function setTab(t){$("tabdesc").innerHTML=TABDESC[t];["cam","res","lens"].forEach(k=>{$("tab-"+k).setAttribute("aria-selected",t===k);$("view-"+k).hidden=t!==k});if(t==="res")search();if(t==="lens")lensCalc();window.scrollTo({top:0})}
-$("tab-cam").onclick=()=>setTab("cam");$("tab-res").onclick=()=>setTab("res");$("tab-lens").onclick=()=>setTab("lens");
+function setTab(t){$("tabdesc").innerHTML=TABDESC[t];["cam","res","lens","fp"].forEach(k=>{$("tab-"+k).setAttribute("aria-selected",t===k);$("view-"+k).hidden=t!==k});if(t==="res")search();if(t==="lens")lensCalc();if(t==="fp"&&window.fpRender)window.fpRender();window.scrollTo({top:0})}
+$("tab-cam").onclick=()=>setTab("cam");$("tab-res").onclick=()=>setTab("res");$("tab-lens").onclick=()=>setTab("lens");$("tab-fp").onclick=()=>setTab("fp");
 
 // ---- lens matching ----
 const PRIMES=[8,10,12,14,16,18,20,21,24,25,27,28,29,32,35,40,45,50,55,65,75,85,100,105,125,135,150,180,200];
@@ -969,6 +1081,158 @@ function copy(text){
   function fallback(v){const ta=document.createElement("textarea");ta.value=v;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done()}catch(e){toast("Select and copy: "+v)}ta.remove()}
 }
 renderChips();renderList();renderCam();$("tabdesc").innerHTML=TABDESC.cam;
+</script>
+<script>
+// ---- forced perspective ----
+(() => {
+  const FT = 0.3048;
+  const COMMON = [12, 16, 18, 20, 23.976, 24, 25, 29.97, 30, 36, 40, 48, 50, 60, 72, 96, 100, 120];
+  const st = { unit: 'm', dist: 4, mode: 'big', factor: 1.5, cam: 1.6, actor: 1.75, fps: 24, rmMode: 'auto', rm: 0 };
+  const el = id => document.getElementById(id);
+  const svg = el('fp-svg');
+  const toU = m => st.unit === 'm' ? m : m / FT;
+  const fromU = v => st.unit === 'm' ? v : v * FT;
+  const fmtLen = m => {
+    if (st.unit === 'm') return (Math.abs(m) < 10 ? m.toFixed(2) : m.toFixed(1)) + ' m';
+    const totalIn = Math.round(Math.abs(m) / FT * 12);
+    return Math.floor(totalIn / 12) + "′ " + (totalIn % 12) + "″";
+  };
+  const k = () => st.mode === 'big' ? st.factor : 1 / st.factor;
+  const nearestCommon = v => COMMON.reduce((a, b) => Math.abs(b - v) < Math.abs(a - v) ? b : a);
+  const fmtFps = v => Math.abs(v - Math.round(v)) < 0.005 ? String(Math.round(v)) : String(v);
+  const setPressed = (gid, attr, val) => el(gid).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset[attr] === val));
+  function syncInputs() {
+    el('fp-cam').value = +toU(st.cam).toFixed(2);
+    el('fp-actor').value = +toU(st.actor).toFixed(2);
+    if (st.rmMode === 'manual') el('fp-rm').value = +toU(st.rm).toFixed(2);
+    document.querySelectorAll('.fp-u').forEach(s => s.textContent = st.unit);
+  }
+  function compute() {
+    const kk = k(), d = st.dist, ds = d / kk;
+    const rmAuto = kk >= 1 ? 0 : st.cam * (1 - kk);
+    const rm = st.rmMode === 'auto' ? rmAuto : st.rm;
+    const rs = st.cam + (rm - st.cam) / kk;
+    const rmMin = Math.max(0, st.cam * (1 - kk));
+    return { kk, d, ds, rm, rs, rmAuto, rmMin, fpsExact: st.fps * Math.sqrt(kk) };
+  }
+  function figure(x, yFeet, hPx, color, opts = {}) {
+    const headR = hPx * 0.075, w = hPx * 0.24;
+    const bodyTop = yFeet - hPx + headR * 2 + hPx * 0.02;
+    const dash = opts.dash ? ' stroke-dasharray="5 4"' : '';
+    const fill = opts.dash ? 'none' : color, sw = opts.dash ? 1.6 : 0;
+    return `<g ${opts.id ? `id="${opts.id}"` : ''} style="${opts.cursor ? 'cursor:grab;' : ''}${opts.dash ? 'pointer-events:none' : ''}">
+      ${opts.hit ? `<rect x="${x - Math.max(w, 22)}" y="${yFeet - hPx - 6}" width="${Math.max(w, 22) * 2}" height="${hPx + 12}" fill="transparent"/>` : ''}
+      <circle cx="${x}" cy="${yFeet - hPx + headR}" r="${headR}" fill="${fill}" stroke="${color}" stroke-width="${sw}"${dash}/>
+      <rect x="${x - w / 2}" y="${bodyTop}" width="${w}" height="${yFeet - bodyTop}" rx="${w * 0.45}" fill="${fill}" stroke="${color}" stroke-width="${sw}"${dash}/></g>`;
+  }
+  let geo = null;
+  function draw(r) {
+    const W = 800, H = 380, L = 70, R = 36, T = 30, B = 62;
+    const { d, ds, kk } = r;
+    const mainY = r.rm, scaledY = r.rs;
+    const xMax = Math.max(d, ds) * 1.12 + 0.3;
+    const yTop = Math.max(st.cam, mainY + Math.max(st.actor, st.actor * kk), scaledY + st.actor) * 1.15;
+    const yBot = Math.min(0, scaledY) * 1.1;
+    const sx = (W - L - R) / xMax, sy = (H - T - B) / (yTop - yBot);
+    const X = m => L + m * sx, Y = m => H - B - (m - yBot) * sy;
+    geo = { sx, L };
+    const css = getComputedStyle(document.documentElement), c = n => css.getPropertyValue(n).trim();
+    const main = c('--accent'), sc = c('--frame'), ink = c('--ink'), muted = c('--muted'), line = c('--line');
+    const camX = X(0), camY = Y(st.cam);
+    let s = `<rect x="0" y="${Y(0)}" width="${W}" height="${H - Y(0)}" fill="${line}" opacity=".5"/>
+      <line x1="0" y1="${Y(0)}" x2="${W}" y2="${Y(0)}" stroke="${muted}" stroke-width="1"/>`;
+    const rw = Math.max(st.actor * 0.5 * sy, 34);
+    const block = (x, h, col) => {
+      if (Math.abs(h) < 0.005) return '';
+      const y0 = Y(Math.max(h, 0)), y1 = Y(Math.min(h, 0));
+      return `<rect x="${x - rw / 2}" y="${y0}" width="${rw}" height="${y1 - y0}" fill="${col}" fill-opacity=".2" stroke="${col}" stroke-width="1"${h < 0 ? ' stroke-dasharray="4 3"' : ''}/>`;
+    };
+    s += block(X(d), mainY, main) + block(X(ds), scaledY, sc);
+    const gHead = mainY + st.actor * kk, gFeet = mainY;
+    const xe = Math.max(d, ds), along = y => st.cam + (y - st.cam) * (xe / d);
+    s += `<g stroke="${sc}" stroke-width="1" opacity=".6" stroke-dasharray="2 4">
+      <line x1="${camX}" y1="${camY}" x2="${X(xe)}" y2="${Y(along(gHead))}"/>
+      <line x1="${camX}" y1="${camY}" x2="${X(xe)}" y2="${Y(along(gFeet))}"/></g>`;
+    s += figure(X(d), Y(mainY), st.actor * sy, main, { id: 'fp-mainFig', cursor: true, hit: true });
+    s += figure(X(d), Y(mainY), st.actor * kk * sy, sc, { dash: true });
+    s += figure(X(ds), Y(scaledY), st.actor * sy, sc);
+    s += `<g transform="translate(${camX},${camY})">
+      <line x1="0" y1="0" x2="0" y2="${Y(0) - camY}" stroke="${muted}" stroke-width="1.5"/>
+      <rect x="-30" y="-11" width="26" height="22" rx="3" fill="${ink}"/>
+      <path d="M-4 -7 L8 -11 L8 11 L-4 7 Z" fill="${ink}"/>
+      <circle cx="-22" cy="-17" r="6" fill="none" stroke="${ink}" stroke-width="2"/>
+      <circle cx="-10" cy="-17" r="6" fill="none" stroke="${ink}" stroke-width="2"/></g>`;
+    const dim = (x1, x2, y, label, color) => `<g stroke="${color}" fill="${color}">
+      <line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke-width="1.2"/>
+      <line x1="${x1}" y1="${y - 5}" x2="${x1}" y2="${y + 5}" stroke-width="1.2"/>
+      <line x1="${x2}" y1="${y - 5}" x2="${x2}" y2="${y + 5}" stroke-width="1.2"/>
+      <text x="${(x1 + x2) / 2}" y="${y - 6}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" stroke="none">${label}</text></g>`;
+    const y1 = Y(yBot) + 22, y2 = Y(yBot) + 48;
+    const [a, b] = ds < d ? [[ds, sc], [d, main]] : [[d, main], [ds, sc]];
+    s += dim(camX, X(a[0]), y1, fmtLen(a[0]), a[1]) + dim(camX, X(b[0]), y2, fmtLen(b[0]), b[1]);
+    s += `<text x="${X(d)}" y="${Y(Math.max(gHead, mainY + st.actor)) - 8}" text-anchor="middle" font-family="Barlow, sans-serif" font-size="13" fill="${muted}">reads as ${fmtLen(st.actor * kk)}</text>`;
+    s += `<text x="${camX - 16}" y="${camY - 30}" text-anchor="middle" font-family="Barlow, sans-serif" font-size="12" fill="${muted}">lens ${fmtLen(st.cam)}</text>`;
+    svg.innerHTML = s;
+    el('fp-mainFig').addEventListener('pointerdown', startDrag);
+  }
+  function render() {
+    const r = compute();
+    el('fp-distOut').textContent = fmtLen(st.dist);
+    el('fp-scaleOut').textContent = (st.mode === 'big' ? '× ' : '÷ ') + st.factor.toFixed(2);
+    el('fp-rDist').textContent = fmtLen(r.ds);
+    el('fp-rDistS').textContent = st.factor === 1 ? 'Same distance, no scaling.' :
+      `${st.mode === 'big' ? 'Closer' : 'Further'} than the main character by ${fmtLen(Math.abs(r.d - r.ds))}. Reads ${st.factor.toFixed(2)}× ${st.mode === 'big' ? 'bigger' : 'smaller'}.`;
+    if (st.rmMode === 'auto') el('fp-rm').value = +toU(r.rm).toFixed(2);
+    if (r.rs >= -0.005) {
+      el('fp-rRiserK').textContent = 'Riser under scaled character';
+      el('fp-rRiser').textContent = fmtLen(Math.max(0, r.rs));
+      el('fp-rRiserS').textContent = `With the main character on ${r.rm < 0.005 ? 'the stage floor' : 'a ' + fmtLen(r.rm) + ' riser'}. Puts both pairs of feet on one sight line.`;
+    } else {
+      el('fp-rRiserK').textContent = 'Pit under scaled character';
+      el('fp-rRiser').textContent = fmtLen(-r.rs);
+      el('fp-rRiserS').textContent = `Their floor sits this far below the stage floor. Raise the main character's riser to ${fmtLen(r.rmMin)} to keep everyone at floor level or above.`;
+    }
+    const near = nearestCommon(r.fpsExact);
+    el('fp-rFps').textContent = fmtFps(near) + ' fps';
+    el('fp-rFpsS').textContent = st.factor === 1 ? 'No change.' :
+      `Exact ${r.fpsExact.toFixed(2)} fps, plays back at ${(st.fps / r.fpsExact * 100).toFixed(0)}% speed. ${st.mode === 'big' ? 'Overcrank' : 'Undercrank'} for physical action only.`;
+    draw(r);
+  }
+  function startDrag(e) {
+    e.preventDefault();
+    svg.setPointerCapture(e.pointerId);
+    const move = ev => {
+      const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+      const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+      const m = Math.min(20, Math.max(0.5, (p.x - geo.L) / geo.sx));
+      st.dist = Math.round(m / 0.05) * 0.05; el('fp-dist').value = st.dist; render();
+    };
+    const up = () => { svg.removeEventListener('pointermove', move); svg.removeEventListener('pointerup', up); svg.removeEventListener('pointercancel', up); };
+    svg.addEventListener('pointermove', move); svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  }
+  el('fp-dist').addEventListener('input', e => { st.dist = +e.target.value; render(); });
+  el('fp-scale').addEventListener('input', e => { st.factor = +e.target.value; render(); });
+  el('fp-presets').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.factor = +b.dataset.v; el('fp-scale').value = st.factor; render(); });
+  el('fp-mode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.mode = b.dataset.m; setPressed('fp-mode', 'm', st.mode); render(); });
+  el('fp-units').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.unit = b.dataset.u; setPressed('fp-units', 'u', st.unit); syncInputs(); render(); });
+  el('fp-cam').addEventListener('input', e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0) { st.cam = fromU(v); render(); } });
+  el('fp-actor').addEventListener('input', e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0.1) { st.actor = fromU(v); render(); } });
+  el('fp-fps').addEventListener('change', e => { st.fps = +e.target.value; render(); });
+  el('fp-rmmode').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.r === 'manual' && st.rmMode === 'auto') st.rm = compute().rm;
+    st.rmMode = b.dataset.r; setPressed('fp-rmmode', 'r', st.rmMode);
+    el('fp-rm').disabled = st.rmMode === 'auto';
+    if (st.rmMode === 'manual') { el('fp-rm').value = +toU(st.rm).toFixed(2); el('fp-rm').focus(); }
+    render();
+  });
+  el('fp-rm').addEventListener('input', e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0) { st.rm = fromU(v); render(); } });
+  const rerender = () => { if (!el('view-fp').hidden) render(); };
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', rerender);
+  new MutationObserver(rerender).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  syncInputs();
+  window.fpRender = render;
+})();
 </script>
 
 <a href="../../" class="site-back" style="position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:99;font:600 12px system-ui,sans-serif;text-decoration:none;color:#fff;background:rgba(20,22,26,.82);padding:6px 11px;border-radius:999px;backdrop-filter:blur(6px)">&larr; All tools</a>
