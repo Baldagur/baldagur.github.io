@@ -350,15 +350,20 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:60
             <button type="button" data-m="big" aria-pressed="true">Bigger ×</button>
             <button type="button" data-m="small" aria-pressed="false">Smaller ÷</button>
           </div>
-          <div class="fplbl"><label for="fp-scale">Factor</label><output id="fp-scaleOut"></output></div>
-          <input type="range" id="fp-scale" min="1" max="5" step="0.05" value="1.5">
+          <div class="fplbl"><label for="fp-factor">Factor</label><output id="fp-scaleOut"></output></div>
+          <div class="fpnum"><input id="fp-factor" type="number" step="any" min="1" max="1000" value="1.5"><span id="fp-factorU">×</span></div>
+          <input type="range" id="fp-scale" min="0" max="1000" step="1" value="88" aria-label="Factor slider, 1 to 100">
           <div class="chips" id="fp-presets">
-            <button type="button" class="chip" data-v="1.25">1.25</button>
-            <button type="button" class="chip" data-v="1.33">1.33</button>
             <button type="button" class="chip" data-v="1.5">1.5</button>
             <button type="button" class="chip" data-v="2">2</button>
             <button type="button" class="chip" data-v="3">3</button>
+            <button type="button" class="chip" data-v="5">5</button>
+            <button type="button" class="chip" data-v="10">10</button>
+            <button type="button" class="chip" data-v="25">25</button>
+            <button type="button" class="chip" data-v="50">50</button>
+            <button type="button" class="chip" data-v="100">100</button>
           </div>
+          <span class="note">Type any factor up to 1000. The slider runs 1 to 100.</span>
         </div>
         <div class="fprow2">
           <div class="fpfield">
@@ -1096,7 +1101,10 @@ renderChips();renderList();renderCam();$("tabdesc").innerHTML=TABDESC.cam;
 // ---- forced perspective ----
 (() => {
   const FT = 0.3048;
-  const COMMON = [12, 16, 18, 20, 23.976, 24, 25, 29.97, 30, 36, 40, 48, 50, 60, 72, 96, 100, 120];
+  const COMMON = [6, 8, 10, 12, 16, 18, 20, 23.976, 24, 25, 29.97, 30, 36, 40, 48, 50, 60, 72, 96, 100, 120, 150, 180, 200, 240, 300, 500, 1000];
+  const fmtF = v => v < 10 ? v.toFixed(2) : String(+v.toFixed(1));
+  const toSlider = f => Math.round(1000 * Math.log(Math.min(Math.max(f, 1), 100)) / Math.log(100));
+  const fromSlider = s => { const v = Math.pow(100, s / 1000); return v < 10 ? Math.round(v / 0.05) * 0.05 : v < 30 ? Math.round(v * 2) / 2 : Math.round(v); };
   const st = { unit: 'm', dist: 4, mode: 'big', factor: 1.5, cam: 1.6, actor: 1.75, fps: 24, rmMode: 'auto', rm: 0 };
   const el = id => document.getElementById(id);
   const svg = el('fp-svg');
@@ -1141,7 +1149,7 @@ renderChips();renderList();renderCam();$("tabdesc").innerHTML=TABDESC.cam;
     const { d, ds, kk } = r;
     const mainY = r.rm, scaledY = r.rs;
     const xMax = Math.max(d, ds) * 1.12 + 0.3;
-    const yTop = Math.max(st.cam, mainY + Math.max(st.actor, st.actor * kk), scaledY + st.actor) * 1.15;
+    const yTop = Math.max(st.cam, mainY + st.actor * Math.max(1, Math.min(kk, 3.5)), scaledY + st.actor) * 1.15;
     const yBot = Math.min(0, scaledY) * 1.1;
     const sx = (W - L - R) / xMax, sy = (H - T - B) / (yTop - yBot);
     const X = m => L + m * sx, Y = m => H - B - (m - yBot) * sy;
@@ -1180,7 +1188,7 @@ renderChips();renderList();renderCam();$("tabdesc").innerHTML=TABDESC.cam;
     const y1 = Y(yBot) + 22, y2 = Y(yBot) + 48;
     const [a, b] = ds < d ? [[ds, sc], [d, main]] : [[d, main], [ds, sc]];
     s += dim(camX, X(a[0]), y1, fmtLen(a[0]), a[1]) + dim(camX, X(b[0]), y2, fmtLen(b[0]), b[1]);
-    s += `<text x="${X(d)}" y="${Y(Math.max(gHead, mainY + st.actor)) - 8}" text-anchor="middle" font-family="Barlow, sans-serif" font-size="13" fill="${muted}">reads as ${fmtLen(st.actor * kk)}</text>`;
+    s += `<text x="${X(d)}" y="${Math.max(16, Y(Math.max(gHead, mainY + st.actor)) - 8)}" text-anchor="middle" font-family="Barlow, sans-serif" font-size="13" fill="${muted}">reads as ${fmtLen(st.actor * kk)}${Y(gHead) < 16 ? ' ↑' : ''}</text>`;
     s += `<text x="${camX - 16}" y="${camY - 30}" text-anchor="middle" font-family="Barlow, sans-serif" font-size="12" fill="${muted}">lens ${fmtLen(st.cam)}</text>`;
     svg.innerHTML = s;
     el('fp-mainFig').addEventListener('pointerdown', startDrag);
@@ -1188,10 +1196,11 @@ renderChips();renderList();renderCam();$("tabdesc").innerHTML=TABDESC.cam;
   function render() {
     const r = compute();
     el('fp-distOut').textContent = fmtLen(st.dist);
-    el('fp-scaleOut').textContent = (st.mode === 'big' ? '× ' : '÷ ') + st.factor.toFixed(2);
+    el('fp-scaleOut').textContent = (st.mode === 'big' ? '× ' : '÷ ') + fmtF(st.factor);
+    el('fp-factorU').textContent = st.mode === 'big' ? '×' : '÷';
     el('fp-rDist').textContent = fmtLen(r.ds);
     el('fp-rDistS').textContent = st.factor === 1 ? 'Same distance, no scaling.' :
-      `${st.mode === 'big' ? 'Closer' : 'Further'} than the main character by ${fmtLen(Math.abs(r.d - r.ds))}. Reads ${st.factor.toFixed(2)}× ${st.mode === 'big' ? 'bigger' : 'smaller'}.`;
+      `${st.mode === 'big' ? 'Closer' : 'Further'} than the main character by ${fmtLen(Math.abs(r.d - r.ds))}. Reads ${fmtF(st.factor)}× ${st.mode === 'big' ? 'bigger' : 'smaller'}.${r.ds < 0.6 ? ' That is very close to the lens: check minimum focus and depth of field, or build a scaled set or split it into plates.' : ''}`;
     if (st.rmMode === 'auto') el('fp-rm').value = +toU(r.rm).toFixed(2);
     if (r.rs >= -0.005) {
       el('fp-rRiserK').textContent = 'Riser under scaled character';
@@ -1211,9 +1220,9 @@ renderChips();renderList();renderCam();$("tabdesc").innerHTML=TABDESC.cam;
   }
   function renderFormulas(r) {
     const n = v => toU(v).toFixed(2), u = st.unit, kk = r.kk;
-    const ks = kk.toFixed(3);
+    const ks = String(+kk.toPrecision(4));
     const rows = [
-      ['Scale', st.mode === 'big' ? 'k = factor' : 'k = 1 ÷ factor', st.mode === 'big' ? `k = ${st.factor.toFixed(2)}` : `k = 1 ÷ ${st.factor.toFixed(2)} = ${ks}`],
+      ['Scale', st.mode === 'big' ? 'k = factor' : 'k = 1 ÷ factor', st.mode === 'big' ? `k = ${fmtF(st.factor)}` : `k = 1 ÷ ${fmtF(st.factor)} = ${ks}`],
       ['Scaled character distance', 'dₛ = d ÷ k', `${n(r.d)} ÷ ${ks} = ${n(r.ds)} ${u}`],
       ['Main riser (Auto)', 'k ≥ 1: rₘ = 0<br>k &lt; 1: rₘ = c × (1 − k)', st.rmMode === 'auto' ? (kk >= 1 ? `rₘ = 0 ${u}` : `${n(st.cam)} × (1 − ${ks}) = ${n(r.rm)} ${u}`) : `Manual: rₘ = ${n(r.rm)} ${u}`],
       ['Scaled character riser', 'rₛ = c + (rₘ − c) ÷ k', `${n(st.cam)} + (${n(r.rm)} − ${n(st.cam)}) ÷ ${ks} = ${n(r.rs)} ${u}`],
@@ -1238,8 +1247,9 @@ renderChips();renderList();renderCam();$("tabdesc").innerHTML=TABDESC.cam;
     svg.addEventListener('pointermove', move); svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
   }
   el('fp-dist').addEventListener('input', e => { st.dist = +e.target.value; render(); });
-  el('fp-scale').addEventListener('input', e => { st.factor = +e.target.value; render(); });
-  el('fp-presets').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.factor = +b.dataset.v; el('fp-scale').value = st.factor; render(); });
+  el('fp-scale').addEventListener('input', e => { st.factor = fromSlider(+e.target.value); el('fp-factor').value = st.factor; render(); });
+  el('fp-factor').addEventListener('input', e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 1 && v <= 1000) { st.factor = v; el('fp-scale').value = toSlider(v); render(); } });
+  el('fp-presets').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.factor = +b.dataset.v; el('fp-factor').value = st.factor; el('fp-scale').value = toSlider(st.factor); render(); });
   el('fp-mode').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.mode = b.dataset.m; setPressed('fp-mode', 'm', st.mode); render(); });
   el('fp-units').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.unit = b.dataset.u; setPressed('fp-units', 'u', st.unit); syncInputs(); render(); });
   el('fp-cam').addEventListener('input', e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0) { st.cam = fromU(v); render(); } });
